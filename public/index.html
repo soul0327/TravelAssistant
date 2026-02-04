@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>Trip Assistant</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <div class="top-app-bar d-flex justify-content-between align-items-center shadow-sm">
+        <div style="flex-grow: 1; overflow: hidden;">
+            <h6 class="m-0 fw-bold text-truncate" id="app-title">我的旅程</h6>
+            <small class="text-muted" id="app-subtitle">載入中...</small>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-icon text-dark d-none" id="btn-trip-setting" onclick="openTripModal(currTripId)">
+                <span class="material-icons-round">settings</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="content-wrapper">
+        <div id="view-home" class="p-3"></div>
+        <div id="view-timeline" class="d-none">
+            <div class="sticky-top bg-white border-bottom py-2 px-2 d-flex gap-2 overflow-x-auto" id="day-nav" style="white-space: nowrap;"></div>
+            <div class="px-3 py-2 d-flex justify-content-between small text-muted bg-light">
+                <span id="timeline-date-label">日期</span>
+                <span class="fw-bold text-danger">本日支出: $<span id="day-cost">0</span></span>
+            </div>
+            <div class="timeline-container pb-5" id="timeline-list">
+                <div class="timeline-line"></div>
+            </div>
+            <div style="height: 80px;"></div>
+        </div>
+        <div id="view-map" class="d-none h-100 position-relative">
+            <div id="map-container"></div>
+            <div id="map-card" class="map-info-card d-none">
+                <div class="d-flex gap-3">
+                    <img id="map-card-img" src="" class="rounded-3 d-none bg-light" style="width: 70px; height: 70px; object-fit: cover;">
+                    <div class="flex-grow-1">
+                        <h6 class="fw-bold mb-1" id="map-card-title">標題</h6>
+                        <p class="small text-muted mb-1 text-truncate" id="map-card-addr">地址</p>
+                        <p class="small text-primary mb-2 fw-bold" id="map-card-time">時間</p>
+                    </div>
+                </div>
+                <button class="btn btn-primary w-100 rounded-pill mt-2" id="map-go-btn">
+                    <span class="material-icons-round fs-6 align-middle me-1">near_me</span> Google 導航
+                </button>
+            </div>
+        </div>
+        <div id="view-expense" class="d-none p-3">
+            <h5 class="fw-bold mb-3">💰 代墊與分帳</h5>
+            <div class="card border-0 bg-primary text-white mb-3 rounded-4 shadow-sm">
+                <div class="card-body text-center">
+                    <small class="opacity-75">旅程總支出 (含公費)</small>
+                    <h2 class="fw-bold m-0">$<span id="exp-total">0</span></h2>
+                </div>
+            </div>
+            <h6 class="small text-muted fw-bold mb-2">代墊排行榜 (誰先付錢)</h6>
+            <div class="card border-0 mb-4 rounded-4 shadow-sm">
+                <ul class="list-group list-group-flush rounded-4" id="exp-payer-list"></ul>
+            </div>
+            <h6 class="small text-muted fw-bold mb-2">建議結算 (誰給誰)</h6>
+            <div id="exp-settle-list" class="d-flex flex-column gap-2"></div>
+            <div style="height: 80px;"></div>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <a href="#" class="nav-item" onclick="switchView('home')"><span class="material-icons-round">home</span><span>首頁</span></a>
+        <a href="#" class="nav-item" onclick="switchView('timeline')"><span class="material-icons-round">format_list_bulleted</span><span>行程</span></a>
+        <a href="#" class="nav-item" onclick="switchView('map')"><span class="material-icons-round">map</span><span>地圖</span></a>
+        <a href="#" class="nav-item" onclick="switchView('expense')"><span class="material-icons-round">attach_money</span><span>分帳</span></a>
+    </nav>
+
+    <button class="fab" id="fab-new-trip" onclick="openTripModal(null)">
+        <span class="material-icons-round" style="font-size: 28px;">add</span>
+    </button>
+    <button class="fab d-none" id="fab-add-item" onclick="openItemModal(null)">
+        <span class="material-icons-round" style="font-size: 28px;">add</span>
+    </button>
+
+    <div class="modal fade" id="modal-trip" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable modal-dialog-bottom">
+            <div class="modal-content">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="sheet-trip-title">旅程設定</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="px-3 pt-2">
+                    <ul class="nav nav-pills nav-fill mb-2 gap-1" id="trip-tabs" role="tablist">
+                        <li class="nav-item"><button class="nav-link active rounded-pill small px-1" data-bs-toggle="tab" data-bs-target="#tab-basic">1.基本</button></li>
+                        <li class="nav-item"><button class="nav-link rounded-pill small px-1" data-bs-toggle="tab" data-bs-target="#tab-companion">2.旅伴</button></li>
+                    </ul>
+                </div>
+                <div class="modal-body">
+                    <form id="form-trip">
+                        <input type="hidden" id="trip-id">
+                        <div class="tab-content">
+                            <div class="tab-pane fade show active" id="tab-basic">
+                                <div class="mb-3"><label class="form-label small text-muted">旅程名稱</label><input type="text" class="form-control form-control-lg bg-light border-0" id="trip-title" placeholder="例如：東京五日遊" required></div>
+                                <div class="row mb-4">
+                                    <div class="col-6"><label class="form-label small text-muted">出發日期</label><input type="date" class="form-control bg-light border-0" id="trip-start" required></div>
+                                    <div class="col-6"><label class="form-label small text-muted">回程日期</label><input type="date" class="form-control bg-light border-0" id="trip-end" required></div>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="tab-companion">
+                                <div class="input-group mb-3"><input type="text" class="form-control bg-light border-0" id="new-companion-name" placeholder="輸入名字"><button class="btn btn-primary" type="button" onclick="addCompanionUI()">新增</button></div>
+                                <ul class="list-group list-group-flush" id="companion-list"></ul>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer flex-nowrap">
+                    <button type="button" class="btn btn-primary w-100 rounded-pill py-3 fw-bold shadow-sm" onclick="saveTrip()">儲存設定</button>
+                    <button type="button" class="btn btn-outline-danger w-100 rounded-pill py-3" onclick="deleteTrip()" id="btn-del-trip" style="display:none; max-width: 100px;">刪除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modal-item" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable modal-dialog-bottom">
+            <div class="modal-content">
+                <div class="modal-header border-bottom-0">
+                    <h5 class="modal-title fw-bold">編輯項目</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-item">
+                        <input type="hidden" id="inp-id"><input type="hidden" id="inp-type" value="spot">
+                        
+                        <div class="row g-2 mb-4">
+                            <div class="col-4">
+                                <div class="type-btn active" onclick="setType('spot')" data-t="spot">
+                                    📍<br>景點
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="type-btn" onclick="setType('dining')" data-t="dining">
+                                    🍴<br>美食
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="type-btn" onclick="setType('transport')" data-t="transport">
+                                    🚆<br>交通
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="type-btn" onclick="setType('hotel')" data-t="hotel">
+                                    🏨<br>住宿
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="type-btn" onclick="setType('luggage')" data-t="luggage">
+                                    🛅<br>寄放/雜項
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="type-btn" onclick="setType('expense')" data-t="expense">
+                                    💰<br>消費
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <label class="form-label small text-muted">開始時間</label>
+                                <input type="time" class="form-control bg-light border-0" id="inp-time" onchange="calcTime('start')" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small text-muted">結束時間</label>
+                                <input type="time" class="form-control bg-light border-0" id="inp-end-time" onchange="calcTime('end')">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small text-muted">日期</label>
+                            <input type="date" class="form-control bg-light border-0" id="inp-date" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small text-muted">標題 (行程名稱)</label>
+                            <input type="text" class="form-control bg-light border-0" id="inp-title" placeholder="例如：吃午餐、參觀神社" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small text-muted">地點 (用於地圖搜尋)</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control bg-light border-0" id="inp-location" placeholder="例如：清水寺、大阪梅田站">
+                                <button class="btn btn-outline-secondary border-0" type="button" onclick="fillBackToHotel()" title="回飯店">
+                                    🏠
+                                </button>
+                                <button class="btn btn-outline-primary border-0" type="button" onclick="fetchCoordinates()" title="抓取座標">
+                                    <span class="material-icons-round">place</span>
+                                </button>
+                                <button class="btn btn-light text-primary border-0" type="button" onclick="searchMap()" title="開啟地圖">
+                                    <span class="material-icons-round">map</span>
+                                </button>
+                            </div>
+                            <small class="text-success d-none" id="coord-status">✅ 已鎖定座標</small>
+                        </div>
+                        <input type="hidden" id="inp-lat"><input type="hidden" id="inp-lng">
+
+                        <div class="card border-0 bg-light mb-3 rounded-4 d-none" id="block-transport">
+                            <div class="card-body p-3">
+                                <h6 class="fw-bold text-primary mb-3">🚆 交通</h6>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-6"><label class="small text-muted">起始站</label><input type="text" class="form-control border-0" id="inp-start-point" placeholder="起點"></div>
+                                    <div class="col-6"><label class="small text-muted">終點站</label><input type="text" class="form-control border-0" id="inp-end-point" placeholder="終點"></div>
+                                </div>
+                                <div class="mb-2"><label class="small text-muted">路線</label><input type="text" class="form-control border-0" id="inp-trans-line" placeholder="如: GK50 / 烏丸線"></div>
+                                <div class="mb-0">
+                                    <label class="small text-muted">預計耗時 (分)</label>
+                                    <input type="number" class="form-control border-0" id="inp-duration" placeholder="分鐘" onchange="calcTime('duration')">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3"><label class="form-label small text-muted">地址 (自動填入)</label><input type="text" class="form-control bg-light border-0" id="inp-address"></div>
+                        <div class="mb-3 d-none" id="block-img"><label class="form-label small text-muted">圖片 URL</label><input type="text" class="form-control bg-light border-0" id="inp-img"></div>
+                        <div class="mb-3"><label class="form-label small text-muted">備註</label><textarea class="form-control bg-light border-0" id="inp-note" rows="2"></textarea></div>
+
+                        <div class="card border-0 bg-primary-subtle mb-3 rounded-4">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="fw-bold text-dark m-0">💰 費用</h6>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="inp-individual" onchange="toggleSplit()">
+                                        <label class="form-check-label small" for="inp-individual">各自處理</label>
+                                    </div>
+                                </div>
+                                
+                                <div id="div-split-setting">
+                                    <div class="mb-3">
+                                        <label class="form-label small text-muted">誰先付錢?</label>
+                                        <select class="form-select border-0" id="inp-payer"></select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small text-muted mb-1">分攤給誰?</label>
+                                        <div class="d-flex flex-wrap gap-2" id="inp-split-container"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-0">
+                                    <label class="form-label small text-muted">金額</label>
+                                    <input type="number" class="form-control border-0 fw-bold text-danger" id="inp-cost" placeholder="0">
+                                </div>
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+                <div class="modal-footer flex-nowrap">
+                    <button type="button" class="btn btn-primary w-100 rounded-pill py-3 fw-bold" onclick="saveItem()">儲存</button>
+                    <button type="button" class="btn btn-outline-danger w-100 rounded-pill py-3" onclick="deleteItem()" id="btn-del-item" style="display:none; max-width: 100px;">刪除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
