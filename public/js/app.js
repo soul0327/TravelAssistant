@@ -1,5 +1,5 @@
 // ==========================================
-// 全域變數與初始化
+// 1. 全域變數與初始化
 // ==========================================
 let currTripId = null;
 let currDate = new Date().toISOString().split('T')[0];
@@ -11,6 +11,7 @@ let mapLine = null;
 // Modal 實體
 let modalTrip = null;
 let modalItem = null;
+let modalView = null; // 新增：檢視專用 Modal
 
 // 資料快取
 let currentTripItems = [];
@@ -20,6 +21,7 @@ $(document).ready(() => {
     // 初始化 Bootstrap Modals
     modalTrip = new bootstrap.Modal('#modal-trip');
     modalItem = new bootstrap.Modal('#modal-item');
+    modalView = new bootstrap.Modal('#modal-view-item');
 
     // 監聽 Modal 關閉事件 (重置表單)
     document.getElementById('modal-trip').addEventListener('hidden.bs.modal', () => {
@@ -28,7 +30,6 @@ $(document).ready(() => {
         $('#btn-del-trip').hide();
         companionsList = [];
         $('#companion-list').empty();
-        // 重置分頁到第一頁
         const firstTab = new bootstrap.Tab(document.querySelector('#trip-tabs button[data-bs-target="#tab-basic"]'));
         firstTab.show();
         $('#hotel-fields-container').empty();
@@ -38,7 +39,6 @@ $(document).ready(() => {
         $('#form-item')[0].reset();
         $('#inp-id').val('');
         $('#btn-del-item').hide();
-        // 重置座標鎖定狀態
         $('#coord-status').addClass('d-none');
     });
 
@@ -47,7 +47,7 @@ $(document).ready(() => {
 });
 
 // ==========================================
-// API Helper
+// 2. API Helper
 // ==========================================
 async function api(url, method = 'GET', data = null) {
     const opts = { method, headers: { 'Content-Type': 'application/json' } };
@@ -57,7 +57,7 @@ async function api(url, method = 'GET', data = null) {
 }
 
 // ==========================================
-// 首頁與預設資料邏輯
+// 3. 首頁與預設資料邏輯
 // ==========================================
 
 async function loadHome() {
@@ -109,7 +109,7 @@ async function createDemoTrip() {
     // 3. 去程航班 GK50 (02:30 -> 06:05)
     const depTimeOut = '02:30';
     const arrTimeOut = '06:05';
-    const suggestOut = subtractTime(depTimeOut, 2); // 00:30
+    const suggestOut = subtractTime(depTimeOut, 2); 
     
     promises.push(api('/api/items', 'POST', {
         id: `fo_${tripId}`, trip_id: tripId, type: 'transport', date: startDate,
@@ -122,7 +122,7 @@ async function createDemoTrip() {
     // 4. 回程航班 GK55 (15:20 -> 17:20)
     const depTimeIn = '15:20'; 
     const arrTimeIn = '17:20';
-    const suggestIn = subtractTime(depTimeIn, 2); // 13:20
+    const suggestIn = subtractTime(depTimeIn, 2); 
 
     promises.push(api('/api/items', 'POST', {
         id: `fi_${tripId}`, trip_id: tripId, type: 'transport', date: endDate,
@@ -153,7 +153,7 @@ async function createDemoTrip() {
     loadHome(); // 刷新顯示
 }
 
-// 選擇旅程 (綁定 window 確保 HTML onclick 可呼叫)
+// 選擇旅程
 window.selectTrip = async function(id, title, start, end) {
     currTripId = id;
     tripMeta = { start, end };
@@ -170,71 +170,98 @@ window.selectTrip = async function(id, title, start, end) {
 }
 
 // ==========================================
-// 時間自動計算邏輯
+// 4. 核心：檢視模式 (View Only)
 // ==========================================
-// changedType: 'start' (改開始), 'duration' (改耗時), 'end' (改結束)
-window.calcTime = function(changedType) {
-    const startTimeStr = $('#inp-time').val();
-    if(!startTimeStr) return;
+window.viewItem = function(id) {
+    const item = currentTripItems.find(i => i.id === id);
+    if (!item) return;
 
-    // 統一使用 duration 欄位
-    const $durationInput = $('#inp-duration');
-    const $endTimeInput = $('#inp-end-time');
+    // 填入檢視資料
+    $('#view-title').text(item.title);
+    $('#view-location').text(item.location || '無地點資訊');
+    if(!item.location) $('#view-location-row').addClass('d-none'); else $('#view-location-row').removeClass('d-none');
 
-    const [sh, sm] = startTimeStr.split(':').map(Number);
-    const startMins = sh * 60 + sm;
+    $('#view-start-time').text(item.start_time);
+    $('#view-end-time').text(item.end_time || '--:--');
+    
+    // 計算 Duration 顯示
+    let duration = '';
+    if (item.type === 'transport') duration = item.transport_time ? `${item.transport_time} 分` : '--';
+    else duration = item.stay_duration ? `${item.stay_duration} 分` : '--';
+    $('#view-duration').text(duration);
 
-    if (changedType === 'start' || changedType === 'duration') {
-        // 修改 [開始] or [耗時] -> 自動算出 [結束]
-        const durVal = parseInt($durationInput.val());
-        if (!isNaN(durVal)) {
-            let totalMins = startMins + durVal;
-            // 簡單處理跨日 (只顯示時間)
-            let eh = Math.floor(totalMins / 60) % 24;
-            let em = totalMins % 60;
-            $endTimeInput.val(`${String(eh).padStart(2,'0')}:${String(em).padStart(2,'0')}`);
-        }
-    } else if (changedType === 'end') {
-        // 修改 [結束] -> 自動回推 [耗時]
-        const endTimeStr = $endTimeInput.val();
-        if (endTimeStr) {
-            const [eh, em] = endTimeStr.split(':').map(Number);
-            let endMins = eh * 60 + em;
-            if (endMins < startMins) endMins += 24 * 60; // 跨日處理
-            let diff = endMins - startMins;
-            $durationInput.val(diff);
-        }
+    // 類型標籤
+    const typeMap = { 'spot': '景點', 'dining': '美食', 'transport': '交通', 'hotel': '住宿', 'luggage': '寄放', 'expense': '消費' };
+    const typeColor = { 'spot': 'success', 'dining': 'warning', 'transport': 'primary', 'hotel': 'info', 'luggage': 'secondary', 'expense': 'danger' };
+    $('#view-type-badge').text(typeMap[item.type] || '其他').attr('class', `badge rounded-pill bg-${typeColor[item.type] || 'dark'}`);
+
+    // 交通細節
+    if (item.type === 'transport') {
+        $('#view-trans-detail').removeClass('d-none');
+        $('#view-trans-route').text(`${item.transport_start || '?'} ➝ ${item.transport_end || '?'}`);
+        $('#view-trans-line').text(item.transport_line ? `(${item.transport_line})` : '');
+    } else {
+        $('#view-trans-detail').addClass('d-none');
     }
-}
 
-// ==========================================
-// 項目編輯 (Item Modal) 邏輯
-// ==========================================
-
-// 切換項目類型 (顯示/隱藏對應欄位)
-// --- Item Form Logic (更新分類顯示邏輯) ---
-window.setType = function(type) {
-    $('.type-btn').removeClass('active'); 
-    $(`.type-btn[data-t="${type}"]`).addClass('active'); 
-    $('#inp-type').val(type);
-
-    // 先隱藏所有專屬區塊
-    $('#block-transport, #block-spot, #block-address, #block-img').addClass('d-none');
-
-    // 根據類型顯示
-    if(type === 'transport') {
-        $('#block-transport').removeClass('d-none');
-    } else if (type === 'spot' || type === 'dining' || type === 'luggage') {
-        // 景點、美食、寄放 都顯示這些
-        $('#block-spot').removeClass('d-none'); // 顯示停留時間
-        $('#block-address').removeClass('d-none'); 
-        $('#block-img').removeClass('d-none');
-    } else if (type === 'hotel') {
-        $('#block-address').removeClass('d-none');
-        $('#block-img').removeClass('d-none');
+    // 備註
+    if (item.note) {
+        $('#view-note-row').removeClass('d-none');
+        $('#view-note').text(item.note);
+    } else {
+        $('#view-note-row').addClass('d-none');
     }
-    // Expense (消費) 維持最簡潔，不顯示額外區塊
+
+    // 費用
+    if (item.cost > 0) {
+        $('#view-cost-row').removeClass('d-none');
+        $('#view-cost').text(item.cost);
+        if (item.is_individual) {
+            $('#view-individual-badge').removeClass('d-none');
+            $('#view-payer-badge').addClass('d-none');
+        } else {
+            $('#view-individual-badge').addClass('d-none');
+            $('#view-payer-badge').removeClass('d-none');
+            const payerName = companionsList.find(c => c.id === item.paid_by)?.name || '我';
+            $('#view-payer-badge').text(`${payerName} 代墊`);
+        }
+    } else {
+        $('#view-cost-row').addClass('d-none');
+    }
+
+    // 地址與地圖
+    const query = item.location || item.title;
+    if (item.address || query) {
+        $('#view-address-row').removeClass('d-none');
+        $('#view-address').text(item.address || query);
+        $('#btn-view-map').off('click').on('click', () => {
+            if(item.lat && item.lng) window.open(`http://googleusercontent.com/maps.google.com/search/${item.lat},${item.lng}`, '_blank');
+            else window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`, '_blank');
+        });
+    } else {
+        $('#view-address-row').addClass('d-none');
+    }
+
+    // 圖片
+    if (item.image_url) {
+        $('#view-hero-img').removeClass('d-none').css('background-image', `url(${item.image_url})`);
+    } else {
+        $('#view-hero-img').addClass('d-none');
+    }
+
+    // 設定底部的「編輯」按鈕
+    $('#btn-view-edit').off('click').on('click', () => {
+        modalView.hide(); // 關閉檢視
+        openItemModal(id); // 打開編輯
+    });
+
+    modalView.show();
 };
+
+// ==========================================
+// 5. 核心：編輯模式 (Edit/Add)
+// ==========================================
+
 // 開啟編輯/新增視窗
 window.openItemModal = function(id) {
     if (id) {
@@ -265,7 +292,7 @@ window.openItemModal = function(id) {
         $('#inp-end-point').val(item.transport_end);
         $('#inp-trans-line').val(item.transport_line);
         
-        // 耗時欄位回填 (依類型)
+        // 耗時欄位回填
         if (item.type === 'transport') {
             $('#inp-duration').val(item.transport_time);
         } else {
@@ -275,7 +302,7 @@ window.openItemModal = function(id) {
         // 各自處理邏輯
         const isInd = (item.is_individual === 1);
         $('#inp-individual').prop('checked', isInd);
-        toggleSplit(); // 更新 UI 顯示
+        toggleSplit(); 
 
         initPayerSplitUI(item.paid_by, item.split_by);
         
@@ -299,46 +326,26 @@ window.openItemModal = function(id) {
     modalItem.show();
 };
 
-// 初始化記帳選單
-window.initPayerSplitUI = function(paidBy, splitByStr) {
-    const $sel = $('#inp-payer').empty();
-    
-    if(companionsList.length === 0) {
-        $sel.append('<option value="">請先新增旅伴</option>');
-    } else {
-        companionsList.forEach(c => {
-            $sel.append(`<option value="${c.id}">${c.name}</option>`);
-        });
-    }
-    
-    if(paidBy) $sel.val(paidBy);
+// 切換項目類型 (顯示/隱藏對應欄位)
+window.setType = function(type) {
+    $('.type-btn').removeClass('active'); 
+    $(`.type-btn[data-t="${type}"]`).addClass('active'); 
+    $('#inp-type').val(type);
 
-    const $splitBox = $('#inp-split-container').empty();
-    let splits = []; 
-    try { splits = JSON.parse(splitByStr || '[]'); } catch(e){}
-    
-    if(companionsList.length === 0) {
-        $splitBox.html('<small class="text-muted">無旅伴可選</small>');
-    } else {
-        companionsList.forEach(c => {
-            const isChecked = (splits.length === 0 || splits.includes(c.id)) ? 'checked' : '';
-            $splitBox.append(`
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="checkbox" value="${c.id}" id="chk-${c.id}" ${isChecked}>
-                    <label class="form-check-label" for="chk-${c.id}">${c.name}</label>
-                </div>
-            `);
-        });
-    }
-};
+    // 先隱藏所有專屬區塊
+    $('#block-transport, #block-spot, #block-address, #block-img').addClass('d-none');
 
-// 切換各自處理 (隱藏分攤選單)
-window.toggleSplit = function() {
-    const isIndividual = $('#inp-individual').is(':checked');
-    if (isIndividual) {
-        $('#div-split-setting').addClass('d-none');
-    } else {
-        $('#div-split-setting').removeClass('d-none');
+    // 根據類型顯示
+    if(type === 'transport') {
+        $('#block-transport').removeClass('d-none');
+    } else if (type === 'spot' || type === 'dining' || type === 'luggage') {
+        // 景點、美食、寄放：顯示停留時間、地址、圖片
+        $('#block-spot').removeClass('d-none');
+        $('#block-address').removeClass('d-none'); 
+        $('#block-img').removeClass('d-none');
+    } else if (type === 'hotel') {
+        $('#block-address').removeClass('d-none');
+        $('#block-img').removeClass('d-none');
     }
 };
 
@@ -363,7 +370,7 @@ window.saveItem = async function() {
         id: id, 
         trip_id: currTripId, 
         type: type, 
-        date: $('#inp-date').val() || currDate,
+        date: $('#inp-date').val() || currDate, 
         start_time: $('#inp-time').val() || '09:00', 
         end_time: $('#inp-end-time').val(), 
         title: $('#inp-title').val(), 
@@ -377,11 +384,10 @@ window.saveItem = async function() {
         paid_by: $('#inp-payer').val(), 
         split_by: JSON.stringify(splits),
         
-        // 新增欄位
-        transport_start: $('#inp-start-point').val(),
-        transport_end: $('#inp-end-point').val(),
+        transport_start: $('#inp-start-point').val(), 
+        transport_end: $('#inp-end-point').val(), 
         transport_line: $('#inp-trans-line').val(),
-        transport_time: transTime,
+        transport_time: transTime, 
         stay_duration: stayDur,
         is_individual: $('#inp-individual').is(':checked') ? 1 : 0
     };
@@ -399,7 +405,10 @@ window.saveItem = async function() {
     renderTimeline();
 };
 
-window.editItem = function(id) { window.openItemModal(id); };
+// 舊的別名，保留相容性
+window.editItem = function(id) { 
+    window.openItemModal(id); 
+};
 
 window.deleteItem = async function() {
     if(!confirm("確定刪除？")) return;
@@ -409,7 +418,43 @@ window.deleteItem = async function() {
     renderTimeline();
 };
 
-// --- 功能：一鍵回飯店 ---
+// ==========================================
+// 6. 輔助功能 (時間計算, 地圖, 回飯店)
+// ==========================================
+
+// 時間自動計算
+window.calcTime = function(changedType) {
+    const startTimeStr = $('#inp-time').val();
+    if(!startTimeStr) return;
+
+    // 統一使用 duration 欄位
+    const $durationInput = $('#inp-duration');
+    const $endTimeInput = $('#inp-end-time');
+
+    const [sh, sm] = startTimeStr.split(':').map(Number);
+    const startMins = sh * 60 + sm;
+
+    if (changedType === 'start' || changedType === 'duration') {
+        const durVal = parseInt($durationInput.val());
+        if (!isNaN(durVal)) {
+            let totalMins = startMins + durVal;
+            let eh = Math.floor(totalMins / 60) % 24;
+            let em = totalMins % 60;
+            $endTimeInput.val(`${String(eh).padStart(2,'0')}:${String(em).padStart(2,'0')}`);
+        }
+    } else if (changedType === 'end') {
+        const endTimeStr = $endTimeInput.val();
+        if (endTimeStr) {
+            const [eh, em] = endTimeStr.split(':').map(Number);
+            let endMins = eh * 60 + em;
+            if (endMins < startMins) endMins += 24 * 60; 
+            let diff = endMins - startMins;
+            $durationInput.val(diff);
+        }
+    }
+}
+
+// 一鍵回飯店
 window.fillBackToHotel = function() {
     const hotel = currentTripItems.find(i => i.type === 'hotel' && i.date === currDate);
     if (hotel) {
@@ -423,7 +468,7 @@ window.fillBackToHotel = function() {
     }
 }
 
-// --- 功能：自動抓取座標 ---
+// 自動抓取座標
 window.fetchCoordinates = async function() {
     const query = $('#inp-location').val();
     if (!query) return alert("請先輸入地點名稱");
@@ -442,8 +487,6 @@ window.fetchCoordinates = async function() {
             $('#inp-lat').val(place.lat);
             $('#inp-lng').val(place.lon);
             $('#coord-status').removeClass('d-none').text(`✅ ${place.display_name.split(',')[0]}`);
-            
-            // 自動填入地址
             if(!$('#inp-address').val()) {
                 $('#inp-address').val(place.display_name);
             }
@@ -459,7 +502,7 @@ window.fetchCoordinates = async function() {
     }
 };
 
-// --- 功能：地圖搜尋 ---
+// 地圖搜尋按鈕
 window.searchMap = function() {
     const query = $('#inp-location').val() || $('#inp-title').val();
     if(query) {
@@ -469,11 +512,57 @@ window.searchMap = function() {
     }
 };
 
+// 直接開啟地圖 (Timeline用)
+window.openGoogleMap = function(event, query) {
+    event.stopPropagation();
+    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+};
+
+// 各自處理切換
+window.toggleSplit = function() {
+    const isIndividual = $('#inp-individual').is(':checked');
+    if (isIndividual) {
+        $('#div-split-setting').addClass('d-none');
+    } else {
+        $('#div-split-setting').removeClass('d-none');
+    }
+};
+
+// 初始化記帳選單
+window.initPayerSplitUI = function(paidBy, splitByStr) {
+    const $sel = $('#inp-payer').empty();
+    if(companionsList.length === 0) {
+        $sel.append('<option value="">請先新增旅伴</option>');
+    } else {
+        companionsList.forEach(c => {
+            $sel.append(`<option value="${c.id}">${c.name}</option>`);
+        });
+    }
+    if(paidBy) $sel.val(paidBy);
+
+    const $splitBox = $('#inp-split-container').empty();
+    let splits = []; 
+    try { splits = JSON.parse(splitByStr || '[]'); } catch(e){}
+    
+    if(companionsList.length === 0) {
+        $splitBox.html('<small class="text-muted">無旅伴可選</small>');
+    } else {
+        companionsList.forEach(c => {
+            const isChecked = (splits.length === 0 || splits.includes(c.id)) ? 'checked' : '';
+            $splitBox.append(`
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" value="${c.id}" id="chk-${c.id}" ${isChecked}>
+                    <label class="form-check-label" for="chk-${c.id}">${c.name}</label>
+                </div>
+            `);
+        });
+    }
+};
+
 // ==========================================
-// 行程時間軸 (Timeline)
+// 7. 渲染時間軸 (Timeline)
 // ==========================================
 
-// --- Timeline Render (更新：地圖按鈕 & 標題修正) ---
 window.renderTimeline = function() {
     const $nav = $('#day-nav').empty();
     const sDate = new Date(tripMeta.start);
@@ -518,22 +607,14 @@ window.renderTimeline = function() {
         let mainContent = '';
         let extraBadge = item.is_individual ? `<span class="badge bg-secondary rounded-pill ms-2" style="font-size:0.7em">各自</span>` : '';
 
-        // Google Map 按鈕邏輯
-        // 優先使用座標，沒有則使用地點名稱，再沒有則使用標題
-        let mapQuery = '';
-        if (item.lat && item.lng) {
-            mapQuery = `${item.lat},${item.lng}`;
-        } else {
-            mapQuery = encodeURIComponent(item.location || item.title);
-        }
-        
+        // Map Button Query
+        let mapQuery = (item.lat && item.lng) ? `${item.lat},${item.lng}` : encodeURIComponent(item.location || item.title);
         const mapBtnHtml = `
             <button class="btn-timeline-map" onclick="openGoogleMap(event, '${mapQuery}')">
                 <span class="material-icons-round fs-5">map</span>
             </button>
         `;
 
-        // 內容顯示邏輯修正：統一顯示 Title
         if (item.type === 'transport') {
             const lineInfo = item.transport_line ? `(${item.transport_line})` : '';
             const route = (item.transport_start && item.transport_end) 
@@ -546,16 +627,13 @@ window.renderTimeline = function() {
                 <div class="small text-muted"></div>
             `;
         } else {
-            // 景點、美食、其他
             const stay = item.stay_duration ? `<span class="badge bg-light text-dark border ms-2">停留 ${item.stay_duration}分</span>` : '';
-            
-            // 地點顯示在標題下方
-            const locationText = item.location ? `<div class="small text-muted"><span class="material-icons-round fs-6 align-middle me-1">place</span>${item.location}</div>` : '';
-
-            mainContent = `
-                <h6 class="fw-bold mt-2 mb-1 text-dark pe-4">${item.title} ${stay} ${extraBadge}</h6>
-                ${locationText}
-            `;
+            // 主要標題
+            mainContent = `<h6 class="fw-bold mt-2 mb-1 text-dark pe-4">${item.title} ${stay} ${extraBadge}</h6>`;
+            // 地點
+            if(item.location) {
+                mainContent += `<div class="small text-muted"><span class="material-icons-round fs-6 align-middle me-1">place</span>${item.location}</div>`;
+            }
         }
 
         let noteHtml = '';
@@ -568,8 +646,9 @@ window.renderTimeline = function() {
         }
 
         $list.append(`
-            <div class="item-card" data-type="${item.type}" onclick="editItem('${item.id}')">
-                ${mapBtnHtml} <div class="time-dot"></div>
+            <div class="item-card" data-type="${item.type}" onclick="viewItem('${item.id}')">
+                ${mapBtnHtml}
+                <div class="time-dot"></div>
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <div class="time-wrapper">${timeDisplay}</div>
                     ${item.cost ? `<span class="fw-bold text-danger small">-$${item.cost}</span>` : ''}
@@ -581,58 +660,46 @@ window.renderTimeline = function() {
     });
     $('#day-cost').text(costSum);
 };
-// 新增：直接開啟 Google Map 的函式 (防止冒泡)
-window.openGoogleMap = function(event, query) {
-    event.stopPropagation(); // 阻止觸發卡片的 editItem
-    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
-};
+
 window.changeDate = function(dateStr) { 
     currDate = dateStr; 
     renderTimeline(); 
 };
 
 // ==========================================
-// 分帳與結算 (Expense)
+// 8. 分帳與其他邏輯
 // ==========================================
 
 window.renderExpense = function() {
-    let totalCost = 0;
-    let payers = {}; 
-    let balance = {};
+    let totalCost = 0; let payers = {}; let balance = {};
     
-    // 初始化
     companionsList.forEach(c => { payers[c.id] = 0; balance[c.id] = 0; });
 
     currentTripItems.forEach(item => {
-        // 如果是各自處理，完全不計入分帳
         if (item.is_individual) return;
 
         const cost = item.cost || 0;
         if (cost <= 0) return;
         totalCost += cost;
 
-        // 誰代墊 (債權人)
         const payerId = item.paid_by;
         if (payerId && payers[payerId] !== undefined) {
             payers[payerId] += cost;
-            balance[payerId] += cost; // 他多付了，餘額增加 (別人欠他)
+            balance[payerId] += cost; 
         }
 
-        // 分攤給誰 (債務人)
         let splits = [];
         try { splits = JSON.parse(item.split_by || '[]'); } catch(e){}
         
         if (splits.length > 0) {
             const perPerson = cost / splits.length;
             splits.forEach(uid => {
-                if (balance[uid] !== undefined) balance[uid] -= perPerson; // 他應付，餘額減少 (他欠別人)
+                if (balance[uid] !== undefined) balance[uid] -= perPerson; 
             });
         }
     });
 
     $('#exp-total').text(totalCost);
-    
-    // Render 代墊榜
     const $payerList = $('#exp-payer-list').empty();
     Object.keys(payers).sort((a,b) => payers[b] - payers[a]).forEach(uid => {
         if (payers[uid] > 0) {
@@ -646,25 +713,24 @@ window.renderExpense = function() {
         }
     });
 
-    // Render 結算建議 (最小化轉帳次數演算法)
     const $settleList = $('#exp-settle-list').empty();
     let debtors = [], creditors = [];
     
     Object.keys(balance).forEach(uid => {
         const val = balance[uid];
-        if (val < -1) debtors.push({ id: uid, amount: val }); // 欠錢
-        if (val > 1) creditors.push({ id: uid, amount: val }); // 被欠錢
+        if (val < -1) debtors.push({ id: uid, amount: val }); 
+        if (val > 1) creditors.push({ id: uid, amount: val }); 
     });
     
-    debtors.sort((a, b) => a.amount - b.amount); // 欠最多排前
-    creditors.sort((a, b) => b.amount - a.amount); // 被欠最多排前
+    debtors.sort((a, b) => a.amount - b.amount); 
+    creditors.sort((a, b) => b.amount - a.amount);
 
     let settleHTML = '';
     let i = 0, j = 0;
     while (i < debtors.length && j < creditors.length) {
         let debt = Math.abs(debtors[i].amount);
         let credit = creditors[j].amount;
-        let amount = Math.min(debt, credit); // 這次還多少
+        let amount = Math.min(debt, credit);
         
         const fromName = companionsList.find(c=>c.id===debtors[i].id)?.name || '未知';
         const toName = companionsList.find(c=>c.id===creditors[j].id)?.name || '未知';
@@ -696,28 +762,17 @@ window.renderExpense = function() {
     }
 };
 
-// ==========================================
-// 旅程設定 (Trip Modal)
-// ==========================================
-
 window.openTripModal = async function(id) { 
     if(id) {
-        // Edit Mode
         const trips = await api('/api/trips');
         const t = trips.find(x => x.id === id);
         $('#sheet-trip-title').text('編輯旅程');
-        $('#trip-id').val(t.id); 
-        $('#trip-title').val(t.title); 
-        $('#trip-start').val(t.start_date); 
-        $('#trip-end').val(t.end_date);
+        $('#trip-id').val(t.id); $('#trip-title').val(t.title); $('#trip-start').val(t.start_date); $('#trip-end').val(t.end_date);
         $('#btn-del-trip').show();
-        
-        // 載入旅伴 (重要：必須在開啟時載入)
         companionsList = await api(`/api/companions?trip_id=${id}`);
         renderCompanionList();
         generateHotelFields(); 
     } else {
-        // New Mode
         $('#sheet-trip-title').text('新增旅程');
         $('#trip-id').val('');
         $('#btn-del-trip').hide();
@@ -763,16 +818,11 @@ window.saveTrip = async function() {
     const id = $('#trip-id').val(); 
     const newId = id || 'trip_' + Date.now();
     await api('/api/trips', 'POST', {
-        id: newId, 
-        title: $('#trip-title').val(), 
-        start_date: $('#trip-start').val(), 
-        end_date: $('#trip-end').val()
+        id: newId, title: $('#trip-title').val(), start_date: $('#trip-start').val(), end_date: $('#trip-end').val()
     });
-    
     for(const c of companionsList) {
         if(c.is_new) await api('/api/companions', 'POST', { id: c.id, trip_id: newId, name: c.name });
     }
-    
     modalTrip.hide();
     if(!id) { loadHome(); switchView('home'); } 
     else { selectTrip(newId, $('#trip-title').val(), $('#trip-start').val()); }
@@ -787,10 +837,6 @@ window.deleteTrip = async function() {
     }
 };
 
-// ==========================================
-// 其他輔助 (地圖, View切換)
-// ==========================================
-
 window.switchView = function(view) {
     $('.nav-item').removeClass('active'); 
     $(`.nav-item[onclick="switchView('${view}')"]`).addClass('active');
@@ -800,26 +846,14 @@ window.switchView = function(view) {
     $('#btn-trip-setting').addClass('d-none');
     
     if (view === 'home') {
-        $('#view-home').removeClass('d-none'); 
-        $('#fab-new-trip').removeClass('d-none'); 
-        $('#app-title').text('我的旅程'); 
-        currTripId=null; 
-        loadHome();
+        $('#view-home').removeClass('d-none'); $('#fab-new-trip').removeClass('d-none'); 
+        $('#app-title').text('我的旅程'); currTripId=null; loadHome();
     } else {
         if(!currTripId) return switchView('home');
         $('#btn-trip-setting').removeClass('d-none');
-        
-        if(view === 'timeline') {
-            $('#view-timeline').removeClass('d-none');
-            $('#fab-add-item').removeClass('d-none');
-            renderTimeline();
-        } else if(view === 'map') {
-            $('#view-map').removeClass('d-none');
-            window.renderMap();
-        } else if(view === 'expense') {
-            $('#view-expense').removeClass('d-none');
-            renderExpense();
-        }
+        if(view === 'timeline') { $('#view-timeline').removeClass('d-none'); $('#fab-add-item').removeClass('d-none'); renderTimeline(); } 
+        else if(view === 'map') { $('#view-map').removeClass('d-none'); window.renderMap(); } 
+        else if(view === 'expense') { $('#view-expense').removeClass('d-none'); renderExpense(); }
     }
 };
 
