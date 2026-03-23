@@ -11,7 +11,7 @@ let mapLine = null;
 // Modal 實體
 let modalTrip = null;
 let modalItem = null;
-let modalView = null; // 新增：檢視專用 Modal
+let modalView = null; 
 
 // 資料快取
 let currentTripItems = [];
@@ -57,7 +57,7 @@ async function api(url, method = 'GET', data = null) {
 }
 
 // ==========================================
-// 3. 首頁與預設資料邏輯
+// 3. 首頁與預設資料邏輯 (關西六日遊完整版)
 // ==========================================
 
 async function loadHome() {
@@ -87,70 +87,101 @@ async function loadHome() {
     });
 }
 
-// --- 預設資料植入 (美味關西六日遊) ---
+// --- 建立預設行程：日本關西之旅 4/19 - 4/24 ---
 async function createDemoTrip() {
     const tripId = 'trip_demo_' + Date.now();
-    const startDate = '2026-04-19';
-    const endDate = '2026-04-24';
-    
-    // 1. 建立旅程 meta
-    await api('/api/trips', 'POST', {
-        id: tripId, title: '美味關西六日遊', start_date: startDate, end_date: endDate
-    });
+    await api('/api/trips', 'POST', { id: tripId, title: '日本關西之旅', start_date: '2026-04-19', end_date: '2026-04-24' });
 
-    // 2. 建立指定旅伴 (無 "我")
+    // 建立旅伴
     const members = ['俊廷', '沛芷', '新翔', '葦茹'];
     for(const name of members) {
         await api('/api/companions', 'POST', { id: `comp_${Date.now()}_${name}`, trip_id: tripId, name: name });
     }
 
     const promises = [];
-
-    // 3. 去程航班 GK50 (02:30 -> 06:05)
-    const depTimeOut = '02:30';
-    const arrTimeOut = '06:05';
-    const suggestOut = subtractTime(depTimeOut, 2); 
     
-    promises.push(api('/api/items', 'POST', {
-        id: `fo_${tripId}`, trip_id: tripId, type: 'transport', date: startDate,
-        start_time: depTimeOut, end_time: arrTimeOut,
-        title: '去程 GK50', location: '關西機場',
-        transport_start: 'TPE (桃園)', transport_end: 'KIX (關西)', transport_line: 'Jetstar GK50',
-        note: `💡 建議 ${suggestOut} 抵達機場辦理登機`
-    }));
-
-    // 4. 回程航班 GK55 (15:20 -> 17:20)
-    const depTimeIn = '15:20'; 
-    const arrTimeIn = '17:20';
-    const suggestIn = subtractTime(depTimeIn, 2); 
-
-    promises.push(api('/api/items', 'POST', {
-        id: `fi_${tripId}`, trip_id: tripId, type: 'transport', date: endDate,
-        start_time: depTimeIn, end_time: arrTimeIn,
-        title: '回程 GK55', location: '桃園機場',
-        transport_start: 'KIX (關西)', transport_end: 'TPE (桃園)', transport_line: 'Jetstar GK55',
-        note: `💡 建議 ${suggestIn} 抵達機場辦理登機`
-    }));
-
-    // 5. 住宿分配
-    // Day 1, 2 (4/19, 4/20): 東橫INN 二條城南
-    ['2026-04-19', '2026-04-20'].forEach((date, i) => {
+    // 輔助新增項目的函式
+    const addItem = (type, date, start, end, title, loc, note, tStart, tEnd, tLine) => {
         promises.push(api('/api/items', 'POST', {
-            id: `hotel_${i}`, trip_id: tripId, type: 'hotel', date: date, start_time: '15:00',
-            title: '入住飯店', location: '東橫INN 二條城南', note: 'Check-in'
+            id: `item_${Math.random().toString(36).substr(2,9)}`, trip_id: tripId, type: type, date: date, 
+            start_time: start, end_time: end, title: title, location: loc || '', note: note || '', cost: 0,
+            transport_start: tStart || '', transport_end: tEnd || '', transport_line: tLine || '', stay_duration: '', is_individual: 0
         }));
-    });
+    };
 
-    // Day 3, 4, 5 (4/21, 4/22, 4/23): 東橫INN 大阪通天閣前
-    ['2026-04-21', '2026-04-22', '2026-04-23'].forEach((date, i) => {
-        promises.push(api('/api/items', 'POST', {
-            id: `hotel_osaka_${i}`, trip_id: tripId, type: 'hotel', date: date, start_time: '15:00',
-            title: '入住飯店', location: '東橫INN 大阪通天閣前', note: 'Check-in'
-        }));
-    });
+    /* =================================================================
+       Day 1 (4/19 日)：機場 ➔ 嵐山 ➔ 二條城 ➔ 祇園
+    ================================================================= */
+    const d1 = '2026-04-19';
+    
+    // 行前提醒 (放最前面)
+    addItem('luggage', d1, '00:00', '00:00', '🎫 交通票券與劃位提醒', '', '💡 必備票券：\n1. JR 關西廣域鐵路周遊券 (5日券)\n2. 南海電鐵 Rapi:t (D6)\n3. ICOCA\n4. Uber App\n\n⚠️ JR 劃位重點：\n抵達日本第一天，請將 D1 HARUKA 與 D2 天橋立特急 (1號/8號) 指定席劃位完成，確保4人坐一起！');
+    
+    addItem('transport', d1, '02:30', '06:05', '去程航班 GK 50', '大阪關西', '💡 建議 00:30 抵達台北辦理登機', '台北 TPE', '大阪關西 KIX', 'Jetstar GK 50');
+    addItem('transport', d1, '07:41', '09:05', '搭乘 HARUKA 6號', '京都車站', '【使用 JR 券】', '關西機場', '京都車站', 'JR HARUKA 6號');
+    addItem('luggage', d1, '09:05', '09:30', '京都車站寄放行李', '京都車站', '');
+    addItem('transport', d1, '09:30', '09:55', '搭 JR 前往馬堀站', '馬堀站', '【使用 JR 券】', '京都車站', '馬堀站', 'JR 山陰本線');
+    addItem('spot', d1, '10:30', '15:40', '嵐山小火車與漫步', '嵐山', '10:53 抵達後，步行竹林、天龍寺、渡月橋\n(已購小火車)');
+    addItem('transport', d1, '15:40', '16:20', '搭 JR 返回京都領行李', '京都車站', '【使用 JR 券】', '嵯峨嵐山站', '京都車站', 'JR');
+    addItem('transport', d1, '16:20', '17:00', '地鐵前往飯店', '二條城前站', '交通 (ICOCA 刷地鐵)：\n京都站 (烏丸線) ➔ 烏丸御池 (轉東西線) ➔ 二條城前站 (2號出口電梯)。', '京都站', '二條城前站', '京都市營地鐵');
+    addItem('hotel', d1, '17:00', '19:00', '飯店 Check-in 休息充電', '東橫INN 二條城南', '紅眼航班體力補給');
+    addItem('dining', d1, '19:00', '21:30', '祇園/河原町 聚餐', '祇園', '東西線直達「三條京阪」');
+
+    /* =================================================================
+       Day 2 (4/20 一)：海之京都「天橋立」一日遊 (延長版)
+    ================================================================= */
+    const d2 = '2026-04-20';
+    addItem('transport', d2, '09:25', '11:32', '搭乘 特急 Hashidate 1號', '天橋立', '【使用 JR 券】直達', '京都車站', '天橋立', '特急 Hashidate 1號');
+    addItem('spot', d2, '12:00', '14:30', '智恩寺、飛龍觀纜車', '天橋立車站側', '');
+    addItem('spot', d2, '14:30', '18:09', '傘松公園、搭船觀光', '天橋立對岸(一之宮)', '看「昇龍觀」');
+    addItem('transport', d2, '18:09', '20:21', '搭乘 特急 Hashidate 8號', '京都車站', '【使用 JR 券】(直達末班)\n註：此段來回價值超過 1 萬日圓，務必使用周遊券。', '天橋立', '京都車站', '特急 Hashidate 8號');
+    addItem('dining', d2, '20:30', '22:00', '晚餐', '京都車站周邊', '');
+    addItem('hotel', d2, '22:00', '22:00', '返回飯店', '東橫INN 二條城南', '');
+
+    /* =================================================================
+       Day 3 (4/21 二)：清水寺(和服) ➔ 奈良(餵鹿) ➔ 大阪
+    ================================================================= */
+    const d3 = '2026-04-21';
+    addItem('transport', d3, '08:00', '08:30', '退房寄行李，Uber 叫車', 'Tekuteku Kyoto 清水店', '4人1台 ➔ 前往和服店', '飯店', '和服店', 'Uber');
+    addItem('spot', d3, '08:30', '10:00', '和服體驗', 'Tekuteku Kyoto 清水店', '挑選、妝髮、穿著約 1.5 小時');
+    addItem('spot', d3, '10:00', '12:15', '清水寺周邊拍照', '清水寺/二年坂/三年坂', '');
+    addItem('transport', d3, '12:15', '13:00', '歸還和服，Uber 返回飯店領行李', '東橫INN 二條城南', '4人1台', '清水寺', '飯店', 'Uber');
+    addItem('transport', d3, '13:00', '14:02', '地鐵前往京都車站', '京都車站', '交通 (ICOCA 刷地鐵)：二條城前 ➔ 烏丸御池 (轉線) ➔ 京都車站', '二條城前', '京都車站', '地鐵');
+    addItem('transport', d3, '14:02', '14:47', '搭乘 JR 奈良線 (快速)', '奈良', '【使用 JR 券】', '京都車站', '奈良', 'JR 奈良線(快速)');
+    addItem('spot', d3, '15:00', '17:30', '奈良公園、東大寺', '奈良公園', '車站寄存行李，搭公車前往。餵鹿、參拜');
+    addItem('transport', d3, '17:30', '18:30', '搭乘 JR 大和路線 (快速)', '新今宮站', '【使用 JR 券】 直達「新今宮站」', '奈良', '新今宮', 'JR 大和路線(快速)');
+    addItem('hotel', d3, '18:30', '19:30', '大阪飯店 Check-in', '東橫INN 大阪通天閣前', '');
+
+    /* =================================================================
+       Day 4 (4/22 三)：環球影城 USJ 全日
+    ================================================================= */
+    const d4 = '2026-04-22';
+    addItem('transport', d4, '06:00', '07:00', '搭 JR 前往 USJ', 'USJ 環球影城', '【使用 JR 券】：新今宮 ➔ 西九條 (轉 JR 櫻島線) ➔ USJ', '新今宮', 'USJ', 'JR');
+    addItem('spot', d4, '07:00', '21:00', '環球影城 USJ 全日', '日本環球影城', 'USJ 門口排隊。\n💡 全日使用快通 4。', '', '', '');
+    addItem('transport', d4, '21:00', '22:00', '原路搭 JR 返回', '新今宮', '【使用 JR 券】', 'USJ', '新今宮', 'JR');
+    addItem('hotel', d4, '22:00', '22:00', '返回飯店', '東橫INN 大阪通天閣前', '');
+
+    /* =================================================================
+       Day 5 (4/23 四)：勝尾寺 ➔ 難波/心齋橋 ➔ 梅田
+    ================================================================= */
+    const d5 = '2026-04-23';
+    addItem('transport', d5, '08:30', '09:30', '前往勝尾寺', '勝尾寺', '交通：地鐵「動物園前」➔「千里中央」，轉 Uber/計程車 往勝尾寺。', '動物園前', '勝尾寺', '地鐵 + Uber');
+    addItem('spot', d5, '09:30', '13:00', '勝尾寺參拜', '勝尾寺', '看必勝達摩');
+    addItem('spot', d5, '13:00', '19:00', '難波/心齋橋採買', '道頓堀/心齋橋', '註：今日市內移動以地鐵為主，請使用 ICOCA。\n神奇寶貝中心 DX、道頓堀採買、摩天輪');
+    addItem('dining', d5, '19:00', '21:30', '梅田商圈夜景晚餐', '藍天大廈空中庭園', '此區不吃牛餐廳極多');
+    addItem('hotel', d5, '22:00', '22:00', '返回飯店', '東橫INN 大阪通天閣前', '');
+
+    /* =================================================================
+       Day 6 (4/24 五)：難波 ➔ 關西機場
+    ================================================================= */
+    const d6 = '2026-04-24';
+    addItem('spot', d6, '10:00', '13:00', '最後採買、補貨', '難波/千日前', '藥妝、電器最後掃貨');
+    addItem('transport', d6, '13:00', '13:40', '搭乘 南海電鐵 Rapi:t', '關西機場', '⚠️ JR 券已失效，需另購', '難波', '關西機場', '南海電鐵 Rapi:t');
+    addItem('luggage', d6, '13:40', '15:20', '抵達機場辦理登機', '關西機場', '');
+    addItem('transport', d6, '15:20', '17:20', '回程航班 GK 55', '台北', '', '大阪關西 KIX', '台北 TPE', 'Jetstar GK 55');
 
     await Promise.all(promises);
-    loadHome(); // 刷新顯示
+    loadHome();
 }
 
 // 選擇旅程
@@ -170,7 +201,7 @@ window.selectTrip = async function(id, title, start, end) {
 }
 
 // ==========================================
-// 4. 核心：檢視模式 (View Only)
+// 4. 檢視模式 (View Only)
 // ==========================================
 window.viewItem = function(id) {
     const item = currentTripItems.find(i => i.id === id);
@@ -185,13 +216,18 @@ window.viewItem = function(id) {
     $('#view-end-time').text(item.end_time || '--:--');
     
     // 計算 Duration 顯示
-    let duration = '';
-    if (item.type === 'transport') duration = item.transport_time ? `${item.transport_time} 分` : '--';
-    else duration = item.stay_duration ? `${item.stay_duration} 分` : '--';
+    let duration = '--';
+    if(item.start_time && item.end_time) {
+        const [sh, sm] = item.start_time.split(':').map(Number);
+        const [eh, em] = item.end_time.split(':').map(Number);
+        let diff = (eh*60+em) - (sh*60+sm);
+        if(diff < 0) diff += 24*60;
+        duration = `${diff} 分`;
+    }
     $('#view-duration').text(duration);
 
-    // 類型標籤
-    const typeMap = { 'spot': '景點', 'dining': '美食', 'transport': '交通', 'hotel': '住宿', 'luggage': '寄放', 'expense': '消費' };
+    // 類型標籤 (自定對應顏色)
+    const typeMap = { 'spot': '景點', 'dining': '美食', 'transport': '交通', 'hotel': '住宿', 'luggage': '票券/雜項', 'expense': '消費' };
     const typeColor = { 'spot': 'success', 'dining': 'warning', 'transport': 'primary', 'hotel': 'info', 'luggage': 'secondary', 'expense': 'danger' };
     $('#view-type-badge').text(typeMap[item.type] || '其他').attr('class', `badge rounded-pill bg-${typeColor[item.type] || 'dark'}`);
 
@@ -259,20 +295,16 @@ window.viewItem = function(id) {
 };
 
 // ==========================================
-// 5. 核心：編輯模式 (Edit/Add)
+// 5. 編輯模式 (Edit/Add)
 // ==========================================
-
-// 開啟編輯/新增視窗
 window.openItemModal = function(id) {
     if (id) {
-        // --- 編輯模式 ---
         const item = currentTripItems.find(i => i.id === id);
         if (!item) return;
         
         $('#inp-id').val(item.id);
         setType(item.type);
         
-        // 通用欄位
         $('#inp-date').val(item.date);
         $('#inp-time').val(item.start_time);
         $('#inp-end-time').val(item.end_time);
@@ -287,36 +319,31 @@ window.openItemModal = function(id) {
         $('#inp-address').val(item.address);
         $('#inp-img').val(item.image_url);
         
-        // 交通專屬
         $('#inp-start-point').val(item.transport_start);
         $('#inp-end-point').val(item.transport_end);
         $('#inp-trans-line').val(item.transport_line);
         
-        // 耗時欄位回填
         if (item.type === 'transport') {
             $('#inp-duration').val(item.transport_time);
         } else {
             $('#inp-duration').val(item.stay_duration);
         }
 
-        // 各自處理邏輯
         const isInd = (item.is_individual === 1);
         $('#inp-individual').prop('checked', isInd);
         toggleSplit(); 
 
         initPayerSplitUI(item.paid_by, item.split_by);
         
-        // 顯示座標狀態
         if(item.lat) $('#coord-status').removeClass('d-none').text('✅ 已有座標');
         
         $('#btn-del-item').show();
     } else {
-        // --- 新增模式 ---
         $('#inp-id').val('');
         $('#inp-date').val(currDate);
         $('#inp-time').val('09:00');
         $('#btn-del-item').hide();
-        setType('spot'); // 預設類型
+        setType('spot'); 
         
         $('#inp-individual').prop('checked', false);
         toggleSplit();
@@ -332,20 +359,59 @@ window.setType = function(type) {
     $(`.type-btn[data-t="${type}"]`).addClass('active'); 
     $('#inp-type').val(type);
 
-    // 先隱藏所有專屬區塊
     $('#block-transport, #block-spot, #block-address, #block-img').addClass('d-none');
 
-    // 根據類型顯示
     if(type === 'transport') {
         $('#block-transport').removeClass('d-none');
     } else if (type === 'spot' || type === 'dining' || type === 'luggage') {
-        // 景點、美食、寄放：顯示停留時間、地址、圖片
         $('#block-spot').removeClass('d-none');
         $('#block-address').removeClass('d-none'); 
         $('#block-img').removeClass('d-none');
     } else if (type === 'hotel') {
         $('#block-address').removeClass('d-none');
         $('#block-img').removeClass('d-none');
+    }
+};
+
+// 初始化記帳選單
+window.initPayerSplitUI = function(paidBy, splitByStr) {
+    const $sel = $('#inp-payer').empty();
+    
+    if(companionsList.length === 0) {
+        $sel.append('<option value="">請先新增旅伴</option>');
+    } else {
+        companionsList.forEach(c => {
+            $sel.append(`<option value="${c.id}">${c.name}</option>`);
+        });
+    }
+    
+    if(paidBy) $sel.val(paidBy);
+
+    const $splitBox = $('#inp-split-container').empty();
+    let splits = []; 
+    try { splits = JSON.parse(splitByStr || '[]'); } catch(e){}
+    
+    if(companionsList.length === 0) {
+        $splitBox.html('<small class="text-muted">無旅伴可選</small>');
+    } else {
+        companionsList.forEach(c => {
+            const isChecked = (splits.length === 0 || splits.includes(c.id)) ? 'checked' : '';
+            $splitBox.append(`
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" value="${c.id}" id="chk-${c.id}" ${isChecked}>
+                    <label class="form-check-label" for="chk-${c.id}">${c.name}</label>
+                </div>
+            `);
+        });
+    }
+};
+
+window.toggleSplit = function() {
+    const isIndividual = $('#inp-individual').is(':checked');
+    if (isIndividual) {
+        $('#div-split-setting').addClass('d-none');
+    } else {
+        $('#div-split-setting').removeClass('d-none');
     }
 };
 
@@ -359,7 +425,6 @@ window.saveItem = async function() {
     let transTime = '', stayDur = '';
     const durationVal = $('#inp-duration').val();
 
-    // 根據類型將 duration 存入正確欄位
     if(type === 'transport') {
         transTime = durationVal;
     } else {
@@ -397,17 +462,14 @@ window.saveItem = async function() {
     await api('/api/items', 'POST', newItem);
     modalItem.hide();
     
-    // 如果日期變了，切換過去
     if(newItem.date !== currDate) currDate = newItem.date;
     
-    // 重載並渲染
     currentTripItems = await api(`/api/items?trip_id=${currTripId}`);
     renderTimeline();
 };
 
-// 舊的別名，保留相容性
-window.editItem = function(id) { 
-    window.openItemModal(id); 
+window.editItem = function(id) {
+    window.openItemModal(id);
 };
 
 window.deleteItem = async function() {
@@ -422,12 +484,10 @@ window.deleteItem = async function() {
 // 6. 輔助功能 (時間計算, 地圖, 回飯店)
 // ==========================================
 
-// 時間自動計算
 window.calcTime = function(changedType) {
     const startTimeStr = $('#inp-time').val();
     if(!startTimeStr) return;
 
-    // 統一使用 duration 欄位
     const $durationInput = $('#inp-duration');
     const $endTimeInput = $('#inp-end-time');
 
@@ -454,13 +514,11 @@ window.calcTime = function(changedType) {
     }
 }
 
-// 一鍵回飯店
 window.fillBackToHotel = function() {
     const hotel = currentTripItems.find(i => i.type === 'hotel' && i.date === currDate);
     if (hotel) {
         $('#inp-title').val(`回飯店`);
         $('#inp-location').val(hotel.location || hotel.title);
-        // 切換到交通模式
         setType('transport');
         $('#inp-end-point').val(hotel.location || hotel.title);
     } else {
@@ -468,7 +526,6 @@ window.fillBackToHotel = function() {
     }
 }
 
-// 自動抓取座標
 window.fetchCoordinates = async function() {
     const query = $('#inp-location').val();
     if (!query) return alert("請先輸入地點名稱");
@@ -502,7 +559,6 @@ window.fetchCoordinates = async function() {
     }
 };
 
-// 地圖搜尋按鈕
 window.searchMap = function() {
     const query = $('#inp-location').val() || $('#inp-title').val();
     if(query) {
@@ -512,51 +568,9 @@ window.searchMap = function() {
     }
 };
 
-// 直接開啟地圖 (Timeline用)
 window.openGoogleMap = function(event, query) {
     event.stopPropagation();
     window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
-};
-
-// 各自處理切換
-window.toggleSplit = function() {
-    const isIndividual = $('#inp-individual').is(':checked');
-    if (isIndividual) {
-        $('#div-split-setting').addClass('d-none');
-    } else {
-        $('#div-split-setting').removeClass('d-none');
-    }
-};
-
-// 初始化記帳選單
-window.initPayerSplitUI = function(paidBy, splitByStr) {
-    const $sel = $('#inp-payer').empty();
-    if(companionsList.length === 0) {
-        $sel.append('<option value="">請先新增旅伴</option>');
-    } else {
-        companionsList.forEach(c => {
-            $sel.append(`<option value="${c.id}">${c.name}</option>`);
-        });
-    }
-    if(paidBy) $sel.val(paidBy);
-
-    const $splitBox = $('#inp-split-container').empty();
-    let splits = []; 
-    try { splits = JSON.parse(splitByStr || '[]'); } catch(e){}
-    
-    if(companionsList.length === 0) {
-        $splitBox.html('<small class="text-muted">無旅伴可選</small>');
-    } else {
-        companionsList.forEach(c => {
-            const isChecked = (splits.length === 0 || splits.includes(c.id)) ? 'checked' : '';
-            $splitBox.append(`
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="checkbox" value="${c.id}" id="chk-${c.id}" ${isChecked}>
-                    <label class="form-check-label" for="chk-${c.id}">${c.name}</label>
-                </div>
-            `);
-        });
-    }
 };
 
 // ==========================================
@@ -628,12 +642,13 @@ window.renderTimeline = function() {
             `;
         } else {
             const stay = item.stay_duration ? `<span class="badge bg-light text-dark border ms-2">停留 ${item.stay_duration}分</span>` : '';
-            // 主要標題
-            mainContent = `<h6 class="fw-bold mt-2 mb-1 text-dark pe-4">${item.title} ${stay} ${extraBadge}</h6>`;
-            // 地點
-            if(item.location) {
-                mainContent += `<div class="small text-muted"><span class="material-icons-round fs-6 align-middle me-1">place</span>${item.location}</div>`;
-            }
+            const displayTitle = item.title;
+            const subTitle = item.location ? item.location : '';
+
+            mainContent = `
+                <h6 class="fw-bold mt-2 mb-1 text-dark pe-4">${displayTitle} ${stay} ${extraBadge}</h6>
+                ${subTitle ? `<div class="small text-muted"><span class="material-icons-round fs-6 align-middle me-1">place</span>${subTitle}</div>` : ''}
+            `;
         }
 
         let noteHtml = '';
@@ -667,11 +682,13 @@ window.changeDate = function(dateStr) {
 };
 
 // ==========================================
-// 8. 分帳與其他邏輯
+// 8. 分帳與結算 (Expense)
 // ==========================================
 
 window.renderExpense = function() {
-    let totalCost = 0; let payers = {}; let balance = {};
+    let totalCost = 0;
+    let payers = {}; 
+    let balance = {};
     
     companionsList.forEach(c => { payers[c.id] = 0; balance[c.id] = 0; });
 
@@ -700,14 +717,15 @@ window.renderExpense = function() {
     });
 
     $('#exp-total').text(totalCost);
+    
     const $payerList = $('#exp-payer-list').empty();
     Object.keys(payers).sort((a,b) => payers[b] - payers[a]).forEach(uid => {
         if (payers[uid] > 0) {
             const name = companionsList.find(c=>c.id===uid)?.name || '未知';
             $payerList.append(`
-                <li class="list-group-item d-flex justify-content-between">
+                <li class="list-group-item d-flex justify-content-between bg-transparent border-0 px-0">
                     <span>${name}</span>
-                    <span class="fw-bold">$${Math.round(payers[uid])}</span>
+                    <span class="fw-bold text-dark">$${Math.round(payers[uid])}</span>
                 </li>
             `);
         }
@@ -743,7 +761,7 @@ window.renderExpense = function() {
                         <span class="material-icons-round text-muted small">arrow_forward</span>
                         <span class="fw-bold text-success">${toName}</span>
                     </div>
-                    <span class="fw-bold fs-5">$${Math.round(amount)}</span>
+                    <span class="fw-bold fs-5 text-dark">$${Math.round(amount)}</span>
                 </div>
             </div>
         `;
@@ -761,6 +779,10 @@ window.renderExpense = function() {
         $settleList.html(settleHTML);
     }
 };
+
+// ==========================================
+// 9. 旅程設定與其他輔助邏輯
+// ==========================================
 
 window.openTripModal = async function(id) { 
     if(id) {
@@ -787,7 +809,7 @@ window.renderCompanionList = function() {
     const $ul = $('#companion-list').empty();
     companionsList.forEach(c => {
         $ul.append(`
-            <li class="list-group-item bg-transparent d-flex justify-content-between px-0">
+            <li class="list-group-item bg-transparent border-0 d-flex justify-content-between px-0">
                 <span>${c.name}</span>
                 <button class="btn btn-sm text-danger" onclick="removeCompanion('${c.id}')">X</button>
             </li>
@@ -880,9 +902,13 @@ window.renderMap = function() {
         const lng = parseFloat(item.lng);
         latlngs.push([lat, lng]);
 
+        let markerColor = '#2F2A25';
+        if(item.type === 'spot') markerColor = '#7B8B6F';
+        if(item.type === 'dining') markerColor = '#C08A68';
+
         const icon = L.divIcon({
             className: 'custom-icon-wrap',
-            html: `<div class="custom-marker" style="background-color: ${item.type === 'spot' ? '#198754' : '#0b57d0'}">${idx + 1}</div>`,
+            html: `<div class="custom-marker" style="background-color: ${markerColor}">${idx + 1}</div>`,
             iconSize: [24, 24],
             iconAnchor: [12, 12]
         });
@@ -906,7 +932,7 @@ window.renderMap = function() {
     });
 
     if (latlngs.length > 1) {
-        mapLine = L.polyline(latlngs, { color: '#0b57d0', dashArray: '10, 10' }).addTo(mapInst);
+        mapLine = L.polyline(latlngs, { color: '#5C5248', dashArray: '10, 10', weight: 4 }).addTo(mapInst);
         mapInst.fitBounds(latlngs, { padding: [50, 50] });
     } else if (latlngs.length === 1) {
         mapInst.setView(latlngs[0], 14);
@@ -933,10 +959,10 @@ window.generateHotelFields = function() {
         count++;
         const dateStr = d.toISOString().split('T')[0];
         $container.append(`
-            <div class="hotel-day-block">
-                <div class="fw-bold small text-primary mb-2">Day ${count} (${dateStr.slice(5)})</div>
-                <input type="text" class="form-control bg-light border-0 mb-2 hotel-name" data-date="${dateStr}" placeholder="飯店名稱">
-                <input type="text" class="form-control bg-light border-0 mb-2 hotel-addr" data-date="${dateStr}" placeholder="地址">
+            <div class="hotel-day-block bg-transparent border-0 border-bottom mb-2 pb-2">
+                <div class="fw-bold small text-dark mb-1">Day ${count} (${dateStr.slice(5)})</div>
+                <input type="text" class="form-control bg-light border-0 mb-1 hotel-name" data-date="${dateStr}" placeholder="飯店名稱">
+                <input type="text" class="form-control bg-light border-0 mb-1 hotel-addr" data-date="${dateStr}" placeholder="地址">
                 <input type="text" class="form-control bg-light border-0 hotel-img" data-date="${dateStr}" placeholder="圖片 URL">
             </div>
         `);
