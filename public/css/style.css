@@ -1,14 +1,13 @@
 :root {
     /* === 🧋 奶茶可愛色系 (Milk Tea Palette) === */
-    --tea-base: #FDFBF7;        /* 鮮奶微黃 (App 整體背景) */
-    --tea-card: #FFFFFF;        /* 雲朵白 (卡片背景) */
-    --tea-oat: #F3EBE1;         /* 燕麥奶 (區塊、未選中按鈕背景) */
-    --tea-caramel: #D4A373;     /* 焦糖奶茶 (主色調、主按鈕、強調色) */
-    --tea-boba: #5C493A;        /* 黑糖珍珠 (主要文字、深色標題) */
-    --tea-cocoa: #8D7B68;       /* 可可粉 (次要文字、說明) */
-    --tea-border: #E8DFD5;      /* 溫柔邊線色 */
+    --tea-base: #FDFBF7;
+    --tea-card: #FFFFFF;
+    --tea-oat: #F3EBE1;
+    --tea-caramel: #D4A373;
+    --tea-boba: #5C493A;
+    --tea-cocoa: #8D7B68;
+    --tea-border: #E8DFD5;
 
-    /* 覆寫系統變數 */
     --surface: var(--tea-base);
     --surface-bright: var(--tea-card);
     --text-main: var(--tea-boba);
@@ -16,97 +15,30 @@
     --primary: var(--tea-caramel);
 }
 
-/* === 全局佈局設定 === */
 body {
     background-color: var(--surface);
-    font-family: 'Nunito', 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif; /* 偏圓潤的字體 */
+    font-family: 'Nunito', 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
     color: var(--text-main);
-    height: 100vh;
-    height: 100dvh; 
-    display: flex;
-    flex-direction: column;
-    overflow: hidden; 
-    margin: 0;
+    height: 100vh; height: 100dvh; 
+    display: flex; flex-direction: column; overflow: hidden; margin: 0;
 }
 
-/* 🧁 頂部導航 (雲朵軟軟陰影) */
-.top-app-bar {
-    background: var(--tea-card);
-    padding: 16px 20px;
-    z-index: 1000;
-    flex-shrink: 0;
-    border-bottom: none;
-    border-radius: 0 0 24px 24px; /* 下方圓角 */
-    box-shadow: 0 4px 15px rgba(212, 163, 115, 0.08); /* 焦糖色微陰影 */
-}
-.top-app-bar h6 {
-    font-weight: 800;
-    color: var(--tea-boba);
-    font-size: 1.1rem;
-}
+.top-app-bar { background: var(--tea-card); padding: 16px 20px; z-index: 1000; flex-shrink: 0; border-radius: 0 0 24px 24px; box-shadow: 0 4px 15px rgba(212, 163, 115, 0.08); }
+.top-app-bar h6 { font-weight: 800; color: var(--tea-boba); font-size: 1.1rem; }
+.content-wrapper { flex-grow: 1; overflow-y: auto; overflow-x: hidden; position: relative; -webkit-overflow-scrolling: touch; padding-top: 8px; }
 
-/* 內容區塊 */
-.content-wrapper {
-    flex-grow: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    position: relative;
-    -webkit-overflow-scrolling: touch;
-    padding-top: 8px;
-}
-
-/* 🧁 底部導航 (懸浮膠囊感) */
-.bottom-nav {
-    flex-shrink: 0;
-    height: 75px;
-    background: var(--tea-card);
-    border-top: none;
-    border-radius: 30px 30px 0 0; /* 上方大圓角 */
-    box-shadow: 0 -4px 20px rgba(212, 163, 115, 0.1);
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    z-index: 1000;
-    padding-bottom: env(safe-area-inset-bottom, 10px);
-}
-.nav-item { 
-    text-align: center; color: var(--tea-cocoa); text-decoration: none; 
-    font-size: 11px; font-weight: 700; width: 100%; padding: 8px 0; 
-    cursor: pointer; background: none; border: none; 
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Q彈動畫 */
-}
+.bottom-nav { flex-shrink: 0; height: 75px; background: var(--tea-card); border-radius: 30px 30px 0 0; box-shadow: 0 -4px 20px rgba(212, 163, 115, 0.1); display: flex; justify-content: space-around; align-items: center; z-index: 1000; padding-bottom: env(safe-area-inset-bottom, 10px); }
+.nav-item { text-align: center; color: var(--tea-cocoa); text-decoration: none; font-size: 11px; font-weight: 700; width: 100%; padding: 8px 0; cursor: pointer; background: none; border: none; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 .nav-item.active { color: var(--tea-boba); transform: translateY(-3px); }
 .nav-item .material-icons-round { display: block; font-size: 26px; margin-bottom: 4px; transition: 0.3s; }
-.nav-item.active .material-icons-round { 
-    background-color: var(--tea-caramel); 
-    color: white; 
-    width: 50px; height: 32px; line-height: 32px;
-    margin: 0 auto 6px auto; 
-    border-radius: 20px; 
-    box-shadow: 0 4px 10px rgba(212, 163, 115, 0.4);
-}
+.nav-item.active .material-icons-round { background-color: var(--tea-caramel); color: white; width: 50px; height: 32px; line-height: 32px; margin: 0 auto 6px auto; border-radius: 20px; box-shadow: 0 4px 10px rgba(212, 163, 115, 0.4); }
 
-/* 🎈 懸浮按鈕 (FAB) - Q彈珍珠 */
-.fab {
-    position: fixed; bottom: 100px; right: 20px; width: 60px; height: 60px;
-    background: linear-gradient(135deg, #E6B981, var(--tea-caramel)); /* 微漸層 */
-    color: white; border-radius: 50%; border: none;
-    box-shadow: 0 6px 15px rgba(212, 163, 115, 0.4);
-    display: flex; align-items: center; justify-content: center; z-index: 1040; 
-    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
+.fab { position: fixed; bottom: 100px; right: 20px; width: 60px; height: 60px; background: linear-gradient(135deg, #E6B981, var(--tea-caramel)); color: white; border-radius: 50%; border: none; box-shadow: 0 6px 15px rgba(212, 163, 115, 0.4); display: flex; align-items: center; justify-content: center; z-index: 1040; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 .fab:active { transform: scale(0.85); box-shadow: 0 2px 5px rgba(212, 163, 115, 0.4); }
 
-/* --- 強制覆寫 Bootstrap 顏色為奶茶系 --- */
 .bg-primary { background-color: var(--tea-caramel) !important; }
 .text-primary { color: var(--tea-caramel) !important; }
-.btn-primary { 
-    background-color: var(--tea-caramel) !important; 
-    border-color: var(--tea-caramel) !important; 
-    color: white !important; 
-    font-weight: 800 !important;
-    transition: all 0.2s;
-}
+.btn-primary { background-color: var(--tea-caramel) !important; border-color: var(--tea-caramel) !important; color: white !important; font-weight: 800 !important; transition: all 0.2s; }
 .btn-primary:active { transform: scale(0.95); }
 .btn-outline-primary { color: var(--tea-caramel) !important; border-color: var(--tea-caramel) !important; }
 .btn-outline-primary:active { background-color: var(--tea-oat) !important; transform: scale(0.95); }
@@ -120,111 +52,58 @@ body {
 .form-control { border-radius: 16px !important; font-weight: 500; color: var(--tea-boba) !important; }
 .form-control:focus { box-shadow: 0 0 0 3px rgba(212, 163, 115, 0.3) !important; }
 
-/* 🎫 旅程卡片 */
-.trip-card {
-    background: var(--tea-card); border-radius: 24px; padding: 20px; margin-bottom: 16px;
-    box-shadow: 0 4px 12px rgba(92, 73, 58, 0.04); border: 2px solid transparent; 
-    cursor: pointer; transition: all 0.2s;
-}
+.trip-card { background: var(--tea-card); border-radius: 24px; padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 12px rgba(92, 73, 58, 0.04); border: 2px solid transparent; cursor: pointer; transition: all 0.2s; }
 .trip-card:active { transform: scale(0.97); border-color: var(--tea-caramel); }
 
-/* 📍 時間軸 */
 .timeline-container { position: relative; padding: 10px 16px; }
 .timeline-line { position: absolute; left: 30px; top: 0; bottom: 0; width: 4px; background: var(--tea-border); border-radius: 4px; z-index: 0; }
-
-/* 📅 日期導航丸子按鈕 */
-#day-nav button {
-    font-weight: 800; border-radius: 20px !important; padding: 6px 16px !important;
-    transition: all 0.2s; border: none !important;
-}
+#day-nav button { font-weight: 800; border-radius: 20px !important; padding: 6px 16px !important; transition: all 0.2s; border: none !important; }
 #day-nav button:active { transform: scale(0.9); }
 #day-nav::-webkit-scrollbar { display: none; }
 
-/* 🏷️ 行程細項卡片 (果凍感) */
-.item-card {
-    background: var(--tea-card); border-radius: 24px; padding: 18px; margin-left: 40px; margin-bottom: 16px;
-    position: relative; box-shadow: 0 4px 12px rgba(92, 73, 58, 0.05); 
-    border-left: 6px solid transparent; cursor: pointer; overflow: visible; 
-    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
+.item-card { background: var(--tea-card); border-radius: 24px; padding: 18px; margin-left: 40px; margin-bottom: 16px; position: relative; box-shadow: 0 4px 12px rgba(92, 73, 58, 0.05); border-left: 6px solid transparent; cursor: pointer; overflow: visible; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 .item-card:active { transform: scale(0.96); box-shadow: 0 2px 6px rgba(92, 73, 58, 0.05); }
 
-/* 🎨 分類顏色 (特調馬卡龍/奶茶色) */
-.item-card[data-type="spot"] { border-left-color: #9CB49A; }      /* 抹茶歐蕾 */
-.item-card[data-type="dining"] { border-left-color: #E29578; }    /* 泰泰奶茶 */
-.item-card[data-type="transport"] { border-left-color: #8DA9C4; } /* 伯爵灰藍 */
-.item-card[data-type="hotel"] { border-left-color: #B5A6C9; }     /* 芋泥紫 */
-.item-card[data-type="luggage"] { border-left-color: #B0A8B9; }   /* 芝麻奶 */
-.item-card[data-type="expense"] { border-left-color: #D58989; }   /* 草莓奶 */
+.item-card[data-type="spot"] { border-left-color: #9CB49A; }
+.item-card[data-type="dining"] { border-left-color: #E29578; }
+.item-card[data-type="transport"] { border-left-color: #8DA9C4; }
+.item-card[data-type="hotel"] { border-left-color: #B5A6C9; }
+.item-card[data-type="luggage"] { border-left-color: #B0A8B9; }
+.item-card[data-type="expense"] { border-left-color: #D58989; }
 .item-card .text-muted { white-space: pre-wrap; font-size: 0.85rem; }
 
-/* ⏰ 卡片內時間與文字 */
 .time-wrapper { display: flex; align-items: center; font-family: 'Nunito', monospace; }
 .time-start { font-size: 1.15em; font-weight: 900; color: var(--tea-boba); }
 .time-arrow { color: var(--tea-caramel); margin: 0 6px; font-size: 0.9em; font-weight: bold; }
 .time-end { font-size: 1.15em; font-weight: 900; color: var(--tea-boba); opacity: 0.6; }
+.time-dot { position: absolute; left: -50px; top: 22px; width: 16px; height: 16px; background: var(--tea-card); border: 4px solid var(--tea-caramel); border-radius: 50%; z-index: 1; box-shadow: 0 0 0 4px var(--tea-base); }
 
-/* 🍡 時間軸上的點點 (像小珍珠) */
-.time-dot { 
-    position: absolute; left: -50px; top: 22px; width: 16px; height: 16px; 
-    background: var(--tea-card); border: 4px solid var(--tea-caramel); 
-    border-radius: 50%; z-index: 1; box-shadow: 0 0 0 4px var(--tea-base);
-}
-
-/* 🗺️ 地圖按鈕 (圓滾滾) */
-.btn-timeline-map { 
-    position: absolute; top: 16px; right: 16px; width: 40px; height: 40px; 
-    border-radius: 50%; background-color: var(--tea-oat); border: none; 
-    color: var(--tea-caramel); display: flex; align-items: center; justify-content: center; 
-    z-index: 2; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-}
+.btn-timeline-map { position: absolute; top: 16px; right: 16px; width: 40px; height: 40px; border-radius: 50%; background-color: var(--tea-oat); border: none; color: var(--tea-caramel); display: flex; align-items: center; justify-content: center; z-index: 2; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 .btn-timeline-map:active { background-color: var(--tea-caramel); color: white; transform: scale(0.85); }
 
-/* 📍 地圖容器與大頭針 */
-#map-container { width: 100%; height: 100%; border-radius: 0 0 24px 24px; }
-.custom-marker { 
-    background: var(--tea-caramel); color: white; border: 3px solid white; 
-    border-radius: 50%; text-align: center; line-height: 24px; font-weight: 900; 
-    font-size: 13px; box-shadow: 0 3px 6px rgba(0,0,0,0.2); 
+/* === 路線包專屬樣式 (Route Style) === */
+.route-node { position: relative; padding-left: 20px; }
+.route-node::before {
+    content: ''; position: absolute; left: 19px; top: 40px; bottom: -10px; width: 2px;
+    background-color: var(--tea-border); z-index: 0;
 }
-.map-info-card { 
-    position: absolute; bottom: 24px; left: 16px; right: 16px; background: var(--tea-card); 
-    padding: 16px; border-radius: 24px; box-shadow: 0 8px 25px rgba(92,73,58,0.15); z-index: 1000; 
-}
+.route-node:last-child::before { display: none; } /* 最後一個節點不要往下連線 */
 
-/* 🗂️ 編輯表單與 Modal (泡泡風格) */
-.type-btn { 
-    border: 2px solid transparent; border-radius: 20px; padding: 14px 8px; 
-    text-align: center; background: var(--tea-oat); color: var(--tea-cocoa); 
-    cursor: pointer; font-size: 13px; font-weight: 700; transition: all 0.2s;
-}
-.type-btn.active { 
-    background: var(--tea-caramel); color: white; transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(212, 163, 115, 0.3);
-}
+.type-btn { border: 2px solid transparent; border-radius: 20px; padding: 14px 8px; text-align: center; background: var(--tea-oat); color: var(--tea-cocoa); cursor: pointer; font-size: 13px; font-weight: 700; transition: all 0.2s; }
+.type-btn.active { background: var(--tea-caramel); color: white; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(212, 163, 115, 0.3); }
 
 .hotel-day-block { background: var(--tea-card); border-radius: 20px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(92,73,58,0.03); }
 
-/* 💡 提示框 (溫暖黃色) */
 .bg-warning-subtle { background-color: #FFF3CD !important; border-radius: 12px !important; }
 .text-warning-emphasis { color: #856404 !important; }
 .border-warning-subtle { border-color: #FFEEBA !important; }
 
-/* === Modal 變形為 Bottom Sheet (超大圓角) === */
 @media (max-width: 576px) {
     .modal-dialog-bottom { margin: 0; width: 100%; max-width: none; height: 100%; display: flex; align-items: flex-end; }
-    .modal-dialog-bottom .modal-content { 
-        height: 94dvh; border-radius: 32px 32px 0 0; border: none; 
-        display: flex; flex-direction: column; background-color: var(--tea-base); 
-        box-shadow: 0 -10px 40px rgba(92, 73, 58, 0.1);
-    }
+    .modal-dialog-bottom .modal-content { height: 94dvh; border-radius: 32px 32px 0 0; border: none; display: flex; flex-direction: column; background-color: var(--tea-base); box-shadow: 0 -10px 40px rgba(92, 73, 58, 0.1); }
 }
 .modal-body { overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 40px; }
 .modal-header { flex-shrink: 0; background: var(--tea-base); z-index: 10; border-radius: 32px 32px 0 0; border-bottom: none !important; padding-top: 24px; }
-.modal-footer { 
-    flex-shrink: 0; background: var(--tea-base); border-top: none; z-index: 20; 
-    padding-bottom: calc(20px + env(safe-area-inset-bottom)); flex-wrap: nowrap; 
-}
+.modal-footer { flex-shrink: 0; background: var(--tea-base); border-top: none; z-index: 20; padding-bottom: calc(20px + env(safe-area-inset-bottom)); flex-wrap: nowrap; }
 
-/* 檢視模式圖片 */
 #view-hero-img { width: 100%; border-radius: 32px 32px 0 0; margin-bottom: -24px; position: relative; z-index: 1; }
